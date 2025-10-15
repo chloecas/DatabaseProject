@@ -16,15 +16,23 @@ VALUES('Chloe', 'chloec@outlook.com', 2024),
 CREATE TABLE Organizer (
     organizerID INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
     name VARCHAR(20),
-    contactInfo VARCHAR(30)
+    orgEmail VARCHAR(30)
 );
+
+INSERT INTO Organizer (name, orgEmail)
+VALUES ('Omar', 'omulligan@outlook.com'),
+('Brenda', 'brenbren@hotmail.com'),
+('Synthia', 'scharles@gmail.com'),
+('Taylor', 'taylorj@outlook.com'),
+('Xavier', 'xprunier@gmail.com');
+
 CREATE TABLE Event (
     eventID INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
     organizerID INT NOT NULL FOREIGN KEY REFERENCES Organizer(organizerID),
     title VARCHAR(30),
-    eventDate DATE,
+    eventDate DATE DEFAULT CURRENT_DATE,
     location VARCHAR(25),
-    capacity INT
+    capacity INT CHECK (capacity <= 350)
 );
 
 CREATE TABLE Registration (
