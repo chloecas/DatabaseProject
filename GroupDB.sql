@@ -51,5 +51,7 @@ CREATE TABLE Registration (
 INSERT INTO Student VALUES('Megumi','Fushiguro','fushigurom@gmail.com',1),
 ('Nobara','Kugisaki','kugisakin@gmail.com',1),('Yuji','Itadori','itadoriy@gmail.com',1),('Maki','Zenin','zeninm@gmail.com',2),('Toge','Inumaki','inumakit@gmail.com',2),
 ('Yuta','Okkotsu','okkotsuy@gmail.com',4),('Aoi','Todo','todoa@gmail.com',3),('Riko','Amanai','amanair@gmail.com',1),
-('Kinji','Hakari','hakarik@gmail.com',3),('Kirara','Hoshi','hoshik',3),('Momo','Nishimiya','nishimiyam@gmail.com',4),
+('Kinji','Hakari','hakarik@gmail.com',3),('Kirara','Hoshi','hoshik@gmail.com',3),('Momo','Nishimiya','nishimiyam@gmail.com',4),
 ('Akari','Nitta','nittaa@gmail.com',4),('Kiyotaka','Ijichi','ijichik@gmail.com',2);
+
+SELECT * FROM Student;
