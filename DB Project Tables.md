@@ -42,4 +42,6 @@ CREATE TABLE Registration (
     status BOOLEAN,
     time TIMESTAMP,
 );
+ALTER TABLE Registration
+ADD CONSTRAINT UQ_StudentEvent UNIQUE(studentID, eventID);
 
