@@ -60,12 +60,31 @@ CREATE TABLE Event (
     capacity INT
 );
 
+--Trigger for ensuring future events
+GO
+CREATE TRIGGER Future
+ON Event
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM inserted 
+        WHERE eventDate <= GETDATE()
+    )
+    BEGIN
+        RAISERROR ('Event must be in the future.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+
 INSERT INTO Event (organizerID, title, eventDate, location, capacity)
 VALUES(1, 'Cooking Workshop', '2025-11-05', 'Cafeteria', 15),
-(2, 'Financial Literacy Workshop', '2025-10-27', 'Room D-210', 10),
+(2, 'Financial Literacy Workshop', '2025-12-27', 'Room D-210', 10),
 (3, 'Music Showcase', '2025-12-11', 'Auditorium', 12),
 (4, 'Writing Workshop', '2025-11-20', 'Library', 20),
-(5, 'Coding Workshop', '2025-10-31', 'Room D-242', 8);
+(5, 'Coding Workshop', '2025-11-31', 'Room D-242', 8);
 
 SELECT * FROM Event;
 
@@ -79,70 +98,102 @@ CREATE TABLE Registration (
 
 --ENFORCING EVENT CAPACITY
 GO
-CREATE TRIGGER eventCap
+CREATE TRIGGER eventCapacity
 ON Registration
 INSTEAD OF INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
+
     IF EXISTS (
         SELECT 1
         FROM inserted i
-        JOIN Event e ON i.eventID = E.eventID
+        JOIN Event e ON i.eventID = e.eventID
         GROUP BY i.eventID, e.capacity
-        HAVING COUNT(*) + 
-            (SELECT COUNT(*) FROM Registration r
-            WHERE r.eventID = i.eventID) > e.capacity
+        HAVING 
+            (SELECT COUNT(*) FROM Registration r WHERE r.eventID = i.eventID)
+            + COUNT(i.studentID) > e.capacity
     )
-BEGIN
-    RAISERROR('Registration failed. Over capacity' 16, 1);
-RETURN;
-END
+    BEGIN
+        RAISERROR('Registration failed. Over capacity', 16, 1);
+        RETURN;
+    END;
 
-INSERT INTO Registration(studentID, eventID, status, time)
-SELECT studentID, eventID, status, time FROM inserted;
+    
+    INSERT INTO Registration (studentID, eventID, status, time)
+    SELECT studentID, eventID, status, time
+    FROM inserted;
 END;
+GO
+
+--constraint for unique registration, prevents duplicates
+ALTER TABLE Registration
+ADD CONSTRAINT UQ_StudentEvent UNIQUE(studentID, eventID);
+
+--constraint so only two options can be used in status
+ALTER TABLE Registration
+ADD CONSTRAINT RegistrationStatus
+CHECK (status IN ('Complete', 'Pending'));
 
 INSERT INTO Registration(studentID, eventID, status, time)
 VALUES(1, 2, 'Complete', CURRENT_TIMESTAMP),
-VALUES(5, 2, 'Complete', CURRENT_TIMESTAMP),
-VALUES(8, 2, 'Pending', CURRENT_TIMESTAMP),
-VALUES(9, 2, 'Complete', CURRENT_TIMESTAMP),
-VALUES(10, 2, 'Pending', CURRENT_TIMESTAMP),
-VALUES(13, 2, 'Complete', CURRENT_TIMESTAMP),
-
-VALUES(2, 1, 'Pending', CURRENT_TIMESTAMP),
-VALUES(3, 1, 'Complete', CURRENT_TIMESTAMP),
-VALUES(4, 1, 'Complete', CURRENT_TIMESTAMP),
-VALUES(6, 1, 'Pending', CURRENT_TIMESTAMP),
-VALUES(7, 1, 'Pending', CURRENT_TIMESTAMP),
-VALUES(11, 1, 'Complete', CURRENT_TIMESTAMP),
-VALUES(12, 1, 'Complete', CURRENT_TIMESTAMP),
-VALUES(13, 1, 'Complete', CURRENT_TIMESTAMP),
-VALUES(16, 1, 'Pending', CURRENT_TIMESTAMP),
-VALUES(18, 1, 'Complete', CURRENT_TIMESTAMP),
+(5, 2, 'Complete', CURRENT_TIMESTAMP),
+(8, 2, 'Pending', CURRENT_TIMESTAMP),
+(9, 2, 'Complete', CURRENT_TIMESTAMP),
+(10, 2, 'Pending', CURRENT_TIMESTAMP),
+(13, 2, 'Complete', CURRENT_TIMESTAMP),
+(22, 2, 'Complete', CURRENT_TIMESTAMP),
+(25, 2, 'Complete', CURRENT_TIMESTAMP),
+(20, 2, 'Pending', CURRENT_TIMESTAMP),
+(15, 2, 'Complete', CURRENT_TIMESTAMP),
 --at capacity
 
-VALUES(14, 3, 'Complete', CURRENT_TIMESTAMP),
-VALUES(15, 3, 'Complete', CURRENT_TIMESTAMP),
-VALUES(17, 3, 'Pending', CURRENT_TIMESTAMP),
-VALUES(18, 3, 'Complete', CURRENT_TIMESTAMP),
-VALUES(19, 3, 'Complete', CURRENT_TIMESTAMP),
-VALUES(3, 3, 'Pending', CURRENT_TIMESTAMP),
-VALUES(5, 3, 'Pending', CURRENT_TIMESTAMP),
-VALUES(20, 3, 'Complete', CURRENT_TIMESTAMP),
-VALUES(7, 3, 'Complete', CURRENT_TIMESTAMP),
-VALUES(4, 3, 'Complete', CURRENT_TIMESTAMP),
+(2, 1, 'Pending', CURRENT_TIMESTAMP),
+(3, 1, 'Complete', CURRENT_TIMESTAMP),
+(4, 1, 'Complete', CURRENT_TIMESTAMP),
+(6, 1, 'Pending', CURRENT_TIMESTAMP),
+(7, 1, 'Pending', CURRENT_TIMESTAMP),
+(11, 1, 'Complete', CURRENT_TIMESTAMP),
+(12, 1, 'Complete', CURRENT_TIMESTAMP),
+(13, 1, 'Complete', CURRENT_TIMESTAMP),
+(16, 1, 'Pending', CURRENT_TIMESTAMP),
+(18, 1, 'Complete', CURRENT_TIMESTAMP),
 
-VALUES(19, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(21, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(22, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(23, 4, 'Pending', CURRENT_TIMESTAMP),
-VALUES(24, 4, 'Pending', CURRENT_TIMESTAMP),
-VALUES(25, 4, 'Pending', CURRENT_TIMESTAMP),
-VALUES(1, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(5, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(6, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(10, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(17, 4, 'Complete', CURRENT_TIMESTAMP),
-VALUES(20, 4, 'Complete', CURRENT_TIMESTAMP),
+(14, 3, 'Complete', CURRENT_TIMESTAMP),
+(15, 3, 'Complete', CURRENT_TIMESTAMP),
+(17, 3, 'Pending', CURRENT_TIMESTAMP),
+(18, 3, 'Complete', CURRENT_TIMESTAMP),
+(19, 3, 'Complete', CURRENT_TIMESTAMP),
+(3, 3, 'Pending', CURRENT_TIMESTAMP),
+(5, 3, 'Pending', CURRENT_TIMESTAMP),
+(20, 3, 'Complete', CURRENT_TIMESTAMP),
+(7, 3, 'Complete', CURRENT_TIMESTAMP),
+(4, 3, 'Complete', CURRENT_TIMESTAMP),
+
+(19, 4, 'Complete', CURRENT_TIMESTAMP),
+(21, 4, 'Complete', CURRENT_TIMESTAMP),
+(22, 4, 'Complete', CURRENT_TIMESTAMP),
+(23, 4, 'Pending', CURRENT_TIMESTAMP),
+(24, 4, 'Pending', CURRENT_TIMESTAMP),
+(25, 4, 'Pending', CURRENT_TIMESTAMP),
+(1, 4, 'Complete', CURRENT_TIMESTAMP),
+(5, 4, 'Complete', CURRENT_TIMESTAMP),
+(6, 4, 'Complete', CURRENT_TIMESTAMP),
+(10, 4, 'Complete', CURRENT_TIMESTAMP),
+(17, 4, 'Complete', CURRENT_TIMESTAMP),
+(20, 4, 'Complete', CURRENT_TIMESTAMP),
+(26, 4, 'Complete', CURRENT_TIMESTAMP),
+
+(1, 5, 'Complete', CURRENT_TIMESTAMP),
+(11, 5, 'Complete', CURRENT_TIMESTAMP),
+(14, 5, 'Complete', CURRENT_TIMESTAMP),
+(8, 5, 'Complete', CURRENT_TIMESTAMP),
+(2, 5, 'Complete', CURRENT_TIMESTAMP),
+(16, 5, 'Complete', CURRENT_TIMESTAMP),
+(23, 5, 'Complete', CURRENT_TIMESTAMP),
+(26, 5, 'Complete', CURRENT_TIMESTAMP);
+--at capacity
+
+
+SELECT * FROM Registration
+ORDER BY eventID;
